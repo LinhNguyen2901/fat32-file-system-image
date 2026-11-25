@@ -93,7 +93,7 @@ void parse_tokens(tokenlist* tokens) {
         exiting = 1;
     }
     else if (strcmp(cmd, "ls") == 0) {
-
+        ls(fp, &navigation);
     }
     else if (strcmp(cmd, "lsof") == 0) {
 
