@@ -3,30 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-int main()
-{
-	while (1) {
-		printf("> ");
-
-		/* input contains the whole command
-		 * tokens contains substrings from input split by spaces
-		 */
-
-		char *input = get_input();
-		printf("whole input: %s\n", input);
-
-		tokenlist *tokens = get_tokens(input);
-		for (int i = 0; i < tokens->size; i++) {
-			printf("token %d: (%s)\n", i, tokens->items[i]);
-		}
-
-		free(input);
-		free_tokens(tokens);
-	}
-
-	return 0;
-}
-
 char *get_input(void) {
 	char *buffer = NULL;
 	int bufsize = 0;
@@ -70,14 +46,35 @@ void add_token(tokenlist *tokens, char *item) {
 }
 
 tokenlist *get_tokens(char *input) {
-	char *buf = (char *)malloc(strlen(input) + 1);
-	strcpy(buf, input);
 	tokenlist *tokens = new_tokenlist();
-	char *tok = strtok(buf, " ");
-	while (tok != NULL)
+	if (input == NULL)
+		return tokens;
+	char *buf = (char *)malloc(strlen(input) + 1);
+	const char *p = input;
+	while (*p != '\0')
 	{
-		add_token(tokens, tok);
-		tok = strtok(NULL, " ");
+		while (*p == ' ' || *p == '\t')
+			p++;
+		if (*p == '\0')
+			break;
+		int len = 0;
+		bool in_quotes = false;
+
+		while (*p != '\0') {
+			if (*p == '\\' && *(p + 1) != '\0') {
+				p++;
+				buf[len++] = *p++;
+			} else if (*p == '"') {
+				in_quotes = !in_quotes;
+				p++;
+			} else if (!in_quotes && (*p == ' ' || *p == '\t')) {
+				break;
+			} else {
+				buf[len++] = *p++;
+			}
+		}
+		buf[len] = '\0';
+		add_token(tokens, buf);
 	}
 	free(buf);
 	return tokens;
