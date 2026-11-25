@@ -5,6 +5,7 @@
 
 FILE * fp;
 int exiting = 0;
+Navigation navigation;
 
 int main(int argc, char * argv[]) {
     if(argc != 2) {
@@ -14,6 +15,11 @@ int main(int argc, char * argv[]) {
 
     if((fp = fopen(argv[1], "rb")) == NULL) {
         printf("%s does not exist\n.", argv[1]);
+        return -1;
+    }
+    if (!init_navigation(fp, &navigation)) {
+        printf("failed to read FAT32 boot sector\n");
+        fclose(fp);
         return -1;
     }
     while (!exiting) {
