@@ -7,6 +7,17 @@ FILE * fp;
 int exiting = 0;
 Navigation navigation;
 
+static const char *image_basename(const char *path) {
+    const char *name = path;
+
+    for (const char *p = path; *p != '\0'; p++) {
+        if (*p == '/' || *p == '\\') {
+            name = p + 1;
+        }
+    }
+    return name;
+}
+
 int main(int argc, char * argv[]) {
     if(argc != 2) {
         printf("invalid number of arguments.\n");
@@ -22,19 +33,22 @@ int main(int argc, char * argv[]) {
         fclose(fp);
         return -1;
     }
+    const char *image_name = image_basename(argv[1]);
     while (!exiting) {
-        printf("> ");
+        if (strcmp(navigation.current_path, "/") == 0) {
+            printf("%s/> ", image_name);
+        } else {
+            printf("%s%s/> ", image_name, navigation.current_path);
+        }
 
         char *input = get_input();
         tokenlist *tokens = get_tokens(input);
-        for (int i = 0; i < tokens->size; i++) {
-            printf("%s\n", tokens->items[i]);
-        }
         parse_tokens(tokens);
 
         free(input);
         free_tokens(tokens);
     }
+    fclose(fp);
     return 0;
 }
 
@@ -99,7 +113,7 @@ void parse_tokens(tokenlist* tokens) {
 
     }
     else if (strcmp(cmd, "cd") == 0) {
-
+        cd(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "mkdir") == 0) {
     

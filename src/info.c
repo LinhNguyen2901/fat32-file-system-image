@@ -4,8 +4,9 @@
 // uint8_t is the size of 1 byte
 void info(FILE *fp) {
     uint8_t boot[512];
-    if (fread(boot, 1, sizeof(boot), fp) != sizeof(boot)) {
-        printf("Failed to read boot sector");
+    if (fseek(fp, 0, SEEK_SET) != 0 ||
+        fread(boot, 1, sizeof(boot), fp) != sizeof(boot)) {
+        printf("Failed to read boot sector\n");
         return;
     }
     
