@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "navigation.h"
 
@@ -54,6 +55,120 @@ static int find_free_entry(FILE *fp, const Navigation *nav, long *entry_offset) 
     }
 
     return -1;
+}
+
+static int find_free_cluster(FILE *fp, const Navigation *nav,
+                             uint32_t *free_cluster) {
+    for (uint32_t cluster = 2; cluster < nav->total_clusters + 2; cluster++) {
+        if (get_fat_entry(fp, nav, cluster) == 0) {
+            *free_cluster = cluster;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int write_fat_entry(FILE *fp, const Navigation *nav, uint32_t cluster) {
+    unsigned char end_of_chain[4] = {0xFF, 0xFF, 0xFF, 0x0F};
+
+    for (uint8_t fat = 0; fat < nav->number_of_fats; fat++) {
+        long offset = (long)(nav->first_fat_sector +
+                      fat * nav->fat_size_in_sectors) *
+                      nav->bytes_per_sector + (long)cluster * 4;
+        if (fseek(fp, offset, SEEK_SET) != 0 ||
+            fwrite(end_of_chain, 1, sizeof(end_of_chain), fp) !=
+                sizeof(end_of_chain)) {
+            return 0;
+        }
+    }
+    return fflush(fp) == 0;
+}
+
+static void set_entry_cluster(unsigned char entry[32], uint32_t cluster) {
+    entry[20] = (unsigned char)(cluster >> 16);
+    entry[21] = (unsigned char)(cluster >> 24);
+    entry[26] = (unsigned char)cluster;
+    entry[27] = (unsigned char)(cluster >> 8);
+}
+
+void mkdir(FILE *fp, Navigation *nav, const char *dirname) {
+    unsigned char existing[32];
+    unsigned char entry[32] = {0};
+    uint32_t new_cluster;
+    long entry_offset;
+
+    if (!valid_filename(dirname)) {
+        printf("mkdir: invalid directory name (use 1-8 characters)\n");
+        return;
+    }
+
+    int found = find_entry(fp, nav, dirname, existing);
+    if (found == 1) {
+        printf("mkdir: %s already exists\n", dirname);
+        return;
+    }
+    if (found < 0) {
+        printf("mkdir: error reading directory\n");
+        return;
+    }
+
+    int available = find_free_entry(fp, nav, &entry_offset);
+    if (available == 0) {
+        printf("mkdir: current directory is full\n");
+        return;
+    }
+    if (available < 0) {
+        printf("mkdir: error reading directory\n");
+        return;
+    }
+    if (!find_free_cluster(fp, nav, &new_cluster)) {
+        printf("mkdir: no free clusters\n");
+        return;
+    }
+
+    size_t cluster_size =
+        (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
+    unsigned char *cluster_data = calloc(cluster_size, 1);
+    if (cluster_data == NULL) {
+        printf("mkdir: not enough memory\n");
+        return;
+    }
+
+    memset(cluster_data, ' ', 11);
+    cluster_data[0] = '.';
+    cluster_data[11] = 0x10;
+    set_entry_cluster(cluster_data, new_cluster);
+
+    memset(cluster_data + 32, ' ', 11);
+    cluster_data[32] = '.';
+    cluster_data[33] = '.';
+    cluster_data[43] = 0x10;
+    set_entry_cluster(cluster_data + 32, nav->current_cluster);
+
+    long cluster_offset = (long)cluster_to_sector(nav, new_cluster) *
+                          nav->bytes_per_sector;
+    int cluster_written =
+        fseek(fp, cluster_offset, SEEK_SET) == 0 &&
+        fwrite(cluster_data, 1, cluster_size, fp) == cluster_size &&
+        fflush(fp) == 0;
+    free(cluster_data);
+    if (!cluster_written || !write_fat_entry(fp, nav, new_cluster)) {
+        printf("mkdir: error writing directory data\n");
+        return;
+    }
+
+    memset(entry, ' ', 11);
+    for (size_t i = 0; dirname[i] != '\0'; i++) {
+        entry[i] = (unsigned char)toupper((unsigned char)dirname[i]);
+    }
+    entry[11] = 0x10;
+    set_entry_cluster(entry, new_cluster);
+
+    if (fseek(fp, entry_offset, SEEK_SET) != 0 ||
+        fwrite(entry, 1, sizeof(entry), fp) != sizeof(entry) ||
+        fflush(fp) != 0) {
+        printf("mkdir: error writing directory entry\n");
+    }
 }
 
 void creat(FILE *fp, Navigation *nav, const char *filename) {
