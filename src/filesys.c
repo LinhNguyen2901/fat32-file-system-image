@@ -119,7 +119,7 @@ void parse_tokens(tokenlist* tokens) {
     
     }
     else if (strcmp(cmd, "creat") == 0) {
-
+        creat(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "close") == 0) {
 
