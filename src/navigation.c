@@ -4,7 +4,7 @@
 #include <string.h>
 #include "navigation.h"
 
-static uint32_t get_fat_entry(FILE *fp, const Navigation *nav, uint32_t cluster) {
+uint32_t get_fat_entry(FILE *fp, const Navigation *nav, uint32_t cluster) {
     unsigned char entry[4];
     long offset = (long)nav->first_fat_sector * nav->bytes_per_sector +
                   (long)cluster * 4;
@@ -59,16 +59,16 @@ int init_navigation(FILE *fp, Navigation *nav) {
     }
 
     uint16_t reserved_sectors = *(uint16_t *)(boot + 14);
-    uint8_t number_of_fats = *(uint8_t *)(boot + 16);
-    uint32_t fat_size_in_sectors = *(uint32_t *)(boot + 36);
 
     nav->bytes_per_sector = *(uint16_t *)(boot + 11);
     nav->sectors_per_cluster = *(uint8_t *)(boot + 13);
+    nav->number_of_fats = *(uint8_t *)(boot + 16);
+    nav->fat_size_in_sectors = *(uint32_t *)(boot + 36);
     nav->root_cluster = *(uint32_t *)(boot + 44);
     nav->current_cluster = nav->root_cluster;
     nav->first_fat_sector = reserved_sectors;
     nav->first_data_sector =
-        reserved_sectors + number_of_fats * fat_size_in_sectors;
+        reserved_sectors + nav->number_of_fats * nav->fat_size_in_sectors;
 
     uint32_t total_sectors = *(uint32_t *)(boot + 32);
     uint32_t data_sectors =
@@ -79,13 +79,13 @@ int init_navigation(FILE *fp, Navigation *nav) {
     return 1;
 }
 
-static uint32_t cluster_to_sector(const Navigation *nav, uint32_t cluster) {
+uint32_t cluster_to_sector(const Navigation *nav, uint32_t cluster) {
     return nav->first_data_sector +
            (cluster - 2) * nav->sectors_per_cluster;
 }
 
-static int find_entry(FILE *fp, const Navigation *nav, const char *name,
-                      unsigned char result[32]) {
+int find_entry(FILE *fp, const Navigation *nav, const char *name,
+               unsigned char result[32]) {
     size_t cluster_size =
         (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
     uint32_t cluster = nav->current_cluster;

@@ -24,8 +24,8 @@ int main(int argc, char * argv[]) {
         return -1;
     } 
 
-    if((fp = fopen(argv[1], "rb")) == NULL) {
-        printf("%s does not exist\n.", argv[1]);
+    if((fp = fopen(argv[1], "rb+")) == NULL) {
+        perror(argv[1]);
         return -1;
     }
     if (!init_navigation(fp, &navigation)) {
