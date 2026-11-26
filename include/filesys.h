@@ -11,8 +11,8 @@ void info(FILE *fp);
 void ls(FILE *fp, const Navigation *nav);
 void cd(FILE *fp, Navigation *nav, const char *dirname);
 
-void mkdir(FILE *fp, const char *dirname);
-void creat(FILE *fp, const char *filename);
+void mkdir(FILE *fp, Navigation *nav, const char *dirname);
+void creat(FILE *fp, Navigation *nav, const char *filename);
 
 void open(FILE *fp, const char *filename, const char *flags);
 void close(const char *filename);

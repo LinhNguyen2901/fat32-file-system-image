@@ -24,8 +24,8 @@ int main(int argc, char * argv[]) {
         return -1;
     } 
 
-    if((fp = fopen(argv[1], "rb")) == NULL) {
-        printf("%s does not exist\n.", argv[1]);
+    if((fp = fopen(argv[1], "rb+")) == NULL) {
+        perror(argv[1]);
         return -1;
     }
     if (!init_navigation(fp, &navigation)) {
@@ -116,10 +116,10 @@ void parse_tokens(tokenlist* tokens) {
         cd(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "mkdir") == 0) {
-    
+        mkdir(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "creat") == 0) {
-
+        creat(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "close") == 0) {
 
