@@ -36,9 +36,9 @@ int main(int argc, char * argv[]) {
     const char *image_name = image_basename(argv[1]);
     while (!exiting) {
         if (strcmp(navigation.current_path, "/") == 0) {
-            printf("%s/> ", image_name);
+            printf(CLR_EXEC"%s" CLR_RESET":" CLR_DIR"/" CLR_RESET"> ", image_name);
         } else {
-            printf("%s%s/> ", image_name, navigation.current_path);
+            printf(CLR_EXEC"%s" CLR_RESET":" CLR_DIR"%s/" CLR_RESET"> ", image_name, navigation.current_path);
         }
 
         char *input = get_input();
@@ -101,48 +101,49 @@ void parse_tokens(tokenlist* tokens) {
     }
 
     if (strcmp(cmd, "info") == 0) {
-       info(&navigation); 
+        info(&navigation); 
     }
     else if (strcmp(cmd, "exit") == 0) {
+        free(navigation.open_files);
         exiting = 1;
     }
     else if (strcmp(cmd, "ls") == 0) {
-        ls(fp, &navigation);
-    }
-    else if (strcmp(cmd, "lsof") == 0) {
-
+        ls_cmd(fp, &navigation);
     }
     else if (strcmp(cmd, "cd") == 0) {
-        cd(fp, &navigation, tokens->items[1]);
+        cd_cmd(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "mkdir") == 0) {
-        mkdir(fp, &navigation, tokens->items[1]);
+        mkdir_cmd(fp, &navigation, tokens->items[1]);
     }
     else if (strcmp(cmd, "creat") == 0) {
-        creat(fp, &navigation, tokens->items[1]);
+        creat_cmd(fp, &navigation, tokens->items[1]);
+    }
+    else if (strcmp(cmd, "open") == 0) {
+        open_cmd(fp, &navigation, tokens->items[1], tokens->items[2]);
     }
     else if (strcmp(cmd, "close") == 0) {
+        close_cmd(fp, &navigation, tokens->items[1]);
+    }
+    else if (strcmp(cmd, "lsof") == 0) {
+        lsof_cmd(&navigation);
+    }
+    else if (strcmp(cmd, "lseek") == 0) {
+        lseek_cmd(fp, &navigation, tokens->items[1], atoi(tokens->items[2]));
+    }
+    else if (strcmp(cmd, "read") == 0) {
+        read_cmd(fp, &navigation, tokens->items[1], atoi(tokens->items[2]));
+    }
+    else if (strcmp(cmd, "write") == 0) {
+
+    }
+    else if (strcmp(cmd, "mv") == 0) {
 
     }
     else if (strcmp(cmd, "rm") == 0) {
 
     }
     else if (strcmp(cmd, "rmdir") == 0) {
-
-    }
-    else if (strcmp(cmd, "open") == 0) {
-
-    }
-    else if (strcmp(cmd, "lseek") == 0) {
-    
-    }
-    else if (strcmp(cmd, "read") == 0) {
-
-    }
-    else if (strcmp(cmd, "mv") == 0) {
-
-    }
-    else if (strcmp(cmd, "write") == 0) {
 
     }
 }

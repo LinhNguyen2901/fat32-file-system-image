@@ -20,7 +20,7 @@ uint32_t get_fat_entry(FILE *fp, const Navigation *nav, uint32_t cluster) {
             (uint32_t)entry[3] << 24) & 0x0FFFFFFF;
 }
 
-static void get_short_name(const unsigned char *entry, char name[13]) {
+void get_short_name(const unsigned char *entry, char name[13]) {
     int length = 0;
 
     for (int i = 0; i < 8 && entry[i] != ' '; i++) {
@@ -36,7 +36,7 @@ static void get_short_name(const unsigned char *entry, char name[13]) {
     name[length] = '\0';
 }
 
-static int names_match(const char *first, const char *second) {
+int names_match(const char *first, const char *second) {
     while (*first != '\0' && *second != '\0') {
         if (toupper((unsigned char)*first) != toupper((unsigned char)*second)) {
             return 0;
@@ -66,6 +66,7 @@ int init_navigation(FILE *fp, Navigation *nav) {
     nav->total_sectors = *(uint32_t *)(boot + 32);
     nav->fat_size_in_sectors = *(uint32_t *)(boot + 36);
     nav->root_cluster = *(uint32_t *)(boot + 44);
+    nav->cluster_size = (uint64_t)nav->bytes_per_sector * nav->sectors_per_cluster;
     nav->current_cluster = nav->root_cluster;
     nav->first_fat_sector = reserved_sectors;
     nav->first_data_sector =
@@ -79,6 +80,12 @@ int init_navigation(FILE *fp, Navigation *nav) {
     return 1;
 }
 
+uint32_t entry_to_cluster(unsigned char entry[32]) {
+    return ((uint32_t)entry[20] << 16) |
+        ((uint32_t)entry[21] << 24) |
+        ((uint32_t)entry[27] << 8) | entry[26];
+}
+
 uint32_t cluster_to_sector(const Navigation *nav, uint32_t cluster) {
     return nav->first_data_sector +
            (cluster - 2) * nav->sectors_per_cluster;
@@ -86,8 +93,6 @@ uint32_t cluster_to_sector(const Navigation *nav, uint32_t cluster) {
 
 int find_entry(FILE *fp, const Navigation *nav, const char *name,
                unsigned char result[32]) {
-    size_t cluster_size =
-        (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
     uint32_t cluster = nav->current_cluster;
 
     for (uint32_t count = 0; count < nav->data_clusters; count++) {
@@ -97,7 +102,7 @@ int find_entry(FILE *fp, const Navigation *nav, const char *name,
             return -1;
         }
 
-        for (size_t i = 0; i < cluster_size / 32; i++) {
+        for (size_t i = 0; i < nav->cluster_size / 32; i++) {
             unsigned char entry[32];
             char entry_name[13];
 
@@ -132,7 +137,7 @@ int find_entry(FILE *fp, const Navigation *nav, const char *name,
     return -1;
 }
 
-void cd(FILE *fp, Navigation *nav, const char *dirname) {
+void cd_cmd(FILE *fp, Navigation *nav, const char *dirname) {
     unsigned char entry[32];
     uint32_t cluster;
 
@@ -158,9 +163,7 @@ void cd(FILE *fp, Navigation *nav, const char *dirname) {
         return;
     }
 
-    cluster = ((uint32_t)entry[20] << 24) |
-              ((uint32_t)entry[21] << 16) |
-              ((uint32_t)entry[27] << 8) | entry[26];
+    cluster = entry_to_cluster(entry);
 
     if (strcmp(dirname, "..") == 0 && cluster == 0) {
         cluster = nav->root_cluster;
@@ -196,12 +199,10 @@ void cd(FILE *fp, Navigation *nav, const char *dirname) {
     nav->current_cluster = cluster;
 }
 
-void ls(FILE *fp, const Navigation *nav) {
-    size_t cluster_size =
-        (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
+void ls_cmd(FILE *fp, const Navigation *nav) {
     uint32_t cluster = nav->current_cluster;
-
-    printf(".\n..\n");
+    int col = 2;
+    printf(CLR_DIR "%-14s%-14s" CLR_RESET, ".", "..");
 
     for (uint32_t count = 0; count < nav->data_clusters; count++) {
         long offset = (long)cluster_to_sector(nav, cluster) *
@@ -211,13 +212,14 @@ void ls(FILE *fp, const Navigation *nav) {
             return;
         }
 
-        for (size_t i = 0; i < cluster_size / 32; i++) {
+        for (size_t i = 0; i < nav->cluster_size / 32; i++) {
             unsigned char entry[32];
             if (fread(entry, 1, sizeof(entry), fp) != sizeof(entry)) {
                 printf("ls: error reading directory\n");
                 return;
             }
             if (entry[0] == 0) {
+                if (col % COLS_PER_ROW != 0) printf("\n");
                 return;
             }
             if (entry[0] == 0xE5 || entry[11] == 0x0F ||
@@ -228,11 +230,18 @@ void ls(FILE *fp, const Navigation *nav) {
 
             char name[13];
             get_short_name(entry, name);
-            printf("%s\n", name);
+            if ((entry[11] & 0x10) != 0) 
+                printf(CLR_DIR "%-14s" CLR_RESET, name);
+            else 
+                printf("%-14s", name);
+            
+            if (++col % COLS_PER_ROW == 0) 
+                printf("\n");
         }
 
         uint32_t next_cluster = get_fat_entry(fp, nav, cluster);
         if (next_cluster >= 0x0FFFFFF8) {
+            if (col % COLS_PER_ROW != 0) printf("\n");
             return;
         }
         if (next_cluster < 2 || next_cluster >= nav->data_clusters + 2) {

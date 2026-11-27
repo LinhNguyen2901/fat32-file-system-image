@@ -91,7 +91,7 @@ static void set_entry_cluster(unsigned char entry[32], uint32_t cluster) {
     entry[27] = (unsigned char)(cluster >> 8);
 }
 
-void mkdir(FILE *fp, Navigation *nav, const char *dirname) {
+void mkdir_cmd(FILE *fp, Navigation *nav, const char *dirname) {
     unsigned char existing[32];
     unsigned char entry[32] = {0};
     uint32_t new_cluster;
@@ -171,7 +171,7 @@ void mkdir(FILE *fp, Navigation *nav, const char *dirname) {
     }
 }
 
-void creat(FILE *fp, Navigation *nav, const char *filename) {
+void creat_cmd(FILE *fp, Navigation *nav, const char *filename) {
     unsigned char existing[32];
     unsigned char entry[32] = {0};
     long entry_offset;
