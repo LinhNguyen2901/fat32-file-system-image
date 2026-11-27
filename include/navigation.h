@@ -5,15 +5,16 @@
 #include <stdint.h>
 
 typedef struct {
-    uint16_t bytes_per_sector;
-    uint8_t sectors_per_cluster;
-    uint8_t number_of_fats;
-    uint32_t fat_size_in_sectors;
-    uint32_t root_cluster;
+    uint16_t bytes_per_sector;      // BPB_BytsPerSec
+    uint8_t sectors_per_cluster;    // BPB_SecPerClus
+    uint8_t number_of_fats;         // BPB_NumFATs
+    uint32_t total_sectors;         // BPB_TotSec32
+    uint32_t fat_size_in_sectors;   // BPB_FATSz32
+    uint32_t root_cluster;          // BPB_RootClus
     uint32_t current_cluster;
     uint32_t first_fat_sector;
     uint32_t first_data_sector;
-    uint32_t total_clusters;
+    uint32_t data_clusters;
     char current_path[256];
 } Navigation;
 

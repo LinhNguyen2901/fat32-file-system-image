@@ -25,7 +25,7 @@ static int find_free_entry(FILE *fp, const Navigation *nav, long *entry_offset) 
         (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
     uint32_t cluster = nav->current_cluster;
 
-    for (uint32_t count = 0; count < nav->total_clusters; count++) {
+    for (uint32_t count = 0; count < nav->data_clusters; count++) {
         long offset = (long)cluster_to_sector(nav, cluster) *
                       nav->bytes_per_sector;
         if (fseek(fp, offset, SEEK_SET) != 0) {
@@ -48,7 +48,7 @@ static int find_free_entry(FILE *fp, const Navigation *nav, long *entry_offset) 
         if (next_cluster >= 0x0FFFFFF8) {
             return 0;
         }
-        if (next_cluster < 2 || next_cluster >= nav->total_clusters + 2) {
+        if (next_cluster < 2 || next_cluster >= nav->data_clusters + 2) {
             return -1;
         }
         cluster = next_cluster;
@@ -59,7 +59,7 @@ static int find_free_entry(FILE *fp, const Navigation *nav, long *entry_offset) 
 
 static int find_free_cluster(FILE *fp, const Navigation *nav,
                              uint32_t *free_cluster) {
-    for (uint32_t cluster = 2; cluster < nav->total_clusters + 2; cluster++) {
+    for (uint32_t cluster = 2; cluster < nav->data_clusters + 2; cluster++) {
         if (get_fat_entry(fp, nav, cluster) == 0) {
             *free_cluster = cluster;
             return 1;

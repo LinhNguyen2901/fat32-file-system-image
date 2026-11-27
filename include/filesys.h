@@ -6,7 +6,7 @@
 int get_expected_args(const char *cmd); 
 void parse_tokens(tokenlist* tokens);
 
-void info(FILE *fp);
+void info(Navigation *navigation);
 
 void ls(FILE *fp, const Navigation *nav);
 void cd(FILE *fp, Navigation *nav, const char *dirname);

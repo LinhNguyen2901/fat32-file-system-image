@@ -63,6 +63,7 @@ int init_navigation(FILE *fp, Navigation *nav) {
     nav->bytes_per_sector = *(uint16_t *)(boot + 11);
     nav->sectors_per_cluster = *(uint8_t *)(boot + 13);
     nav->number_of_fats = *(uint8_t *)(boot + 16);
+    nav->total_sectors = *(uint32_t *)(boot + 32);
     nav->fat_size_in_sectors = *(uint32_t *)(boot + 36);
     nav->root_cluster = *(uint32_t *)(boot + 44);
     nav->current_cluster = nav->root_cluster;
@@ -70,10 +71,9 @@ int init_navigation(FILE *fp, Navigation *nav) {
     nav->first_data_sector =
         reserved_sectors + nav->number_of_fats * nav->fat_size_in_sectors;
 
-    uint32_t total_sectors = *(uint32_t *)(boot + 32);
     uint32_t data_sectors =
-        total_sectors - nav->first_data_sector;
-    nav->total_clusters = data_sectors / nav->sectors_per_cluster;
+        nav->total_sectors - nav->first_data_sector;
+    nav->data_clusters = data_sectors / nav->sectors_per_cluster;
 
     strcpy(nav->current_path, "/");
     return 1;
@@ -90,7 +90,7 @@ int find_entry(FILE *fp, const Navigation *nav, const char *name,
         (size_t)nav->bytes_per_sector * nav->sectors_per_cluster;
     uint32_t cluster = nav->current_cluster;
 
-    for (uint32_t count = 0; count < nav->total_clusters; count++) {
+    for (uint32_t count = 0; count < nav->data_clusters; count++) {
         long offset = (long)cluster_to_sector(nav, cluster) *
                       nav->bytes_per_sector;
         if (fseek(fp, offset, SEEK_SET) != 0) {
@@ -123,7 +123,7 @@ int find_entry(FILE *fp, const Navigation *nav, const char *name,
         if (next_cluster >= 0x0FFFFFF8) {
             return 0;
         }
-        if (next_cluster < 2 || next_cluster >= nav->total_clusters + 2) {
+        if (next_cluster < 2 || next_cluster >= nav->data_clusters + 2) {
             return -1;
         }
         cluster = next_cluster;
@@ -165,7 +165,7 @@ void cd(FILE *fp, Navigation *nav, const char *dirname) {
     if (strcmp(dirname, "..") == 0 && cluster == 0) {
         cluster = nav->root_cluster;
     }
-    if (cluster < 2 || cluster >= nav->total_clusters + 2) {
+    if (cluster < 2 || cluster >= nav->data_clusters + 2) {
         printf("cd: invalid directory entry\n");
         return;
     }
@@ -203,7 +203,7 @@ void ls(FILE *fp, const Navigation *nav) {
 
     printf(".\n..\n");
 
-    for (uint32_t count = 0; count < nav->total_clusters; count++) {
+    for (uint32_t count = 0; count < nav->data_clusters; count++) {
         long offset = (long)cluster_to_sector(nav, cluster) *
                       nav->bytes_per_sector;
         if (fseek(fp, offset, SEEK_SET) != 0) {
@@ -235,7 +235,7 @@ void ls(FILE *fp, const Navigation *nav) {
         if (next_cluster >= 0x0FFFFFF8) {
             return;
         }
-        if (next_cluster < 2 || next_cluster >= nav->total_clusters + 2) {
+        if (next_cluster < 2 || next_cluster >= nav->data_clusters + 2) {
             printf("ls: invalid directory cluster chain\n");
             return;
         }

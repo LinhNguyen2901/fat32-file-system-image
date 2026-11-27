@@ -101,7 +101,7 @@ void parse_tokens(tokenlist* tokens) {
     }
 
     if (strcmp(cmd, "info") == 0) {
-       info(fp); 
+       info(&navigation); 
     }
     else if (strcmp(cmd, "exit") == 0) {
         exiting = 1;
